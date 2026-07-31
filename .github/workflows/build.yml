@@ -33,8 +33,9 @@ jobs:
         run: |
           cd "${{ runner.temp }}"
           curl -sL -o ndk.zip https://dl.google.com/android/repository/android-ndk-r29-linux.zip
+          rm -rf "${{ runner.temp }}/android-ndk-r29"
           unzip -q ndk.zip
-          mv android-ndk-r29 ${{ runner.temp }}/android-ndk-r29
+          mv android-ndk-r29 "${{ runner.temp }}/android-ndk-r29"
 
       - name: Build POC
         run: |
@@ -71,8 +72,9 @@ jobs:
         run: |
           cd "${{ runner.temp }}"
           curl -sL -o ndk.zip https://dl.google.com/android/repository/android-ndk-r29-linux.zip
+          rm -rf "${{ runner.temp }}/android-ndk-r29"
           unzip -q ndk.zip
-          mv android-ndk-r29 ${{ runner.temp }}/android-ndk-r29
+          mv android-ndk-r29 "${{ runner.temp }}/android-ndk-r29"
 
       - name: Install host deps
         run: |
