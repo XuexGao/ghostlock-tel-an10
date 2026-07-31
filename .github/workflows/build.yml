@@ -1,0 +1,92 @@
+# ============================================================
+#  GhostLock (CVE-2026-43499) - HUAWEI TEL-AN10 (4.14) 构建流水线
+#
+#  触发: push / workflow_dispatch
+#  产物: GitHub Actions Artifacts (页面右上角 Artifacts 下载)
+#
+#  - poc/        : 4.14 POC (trigger + exploit), Android NDK 编译
+#  - fullchain/  : 完整链 (repo2 xpad2, 4.19 参考实现), NDK + 主机控制器
+# ============================================================
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  poc:
+    name: "POC (4.14 trigger+exploit)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Android NDK r29
+        id: cache-ndk
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/android-ndk-r29
+          key: ndk-r29-${{ runner.os }}
+
+      - name: Download Android NDK r29
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: |
+          cd "${{ runner.temp }}"
+          curl -sL -o ndk.zip https://dl.google.com/android/repository/android-ndk-r29-linux.zip
+          unzip -q ndk.zip
+          mv android-ndk-r29 ${{ runner.temp }}/android-ndk-r29
+
+      - name: Build POC
+        run: |
+          make -C poc clean all NDK_ROOT="${{ runner.temp }}/android-ndk-r29"
+          file poc/ghostlock_trigger poc/ghostlock_exploit
+
+      - name: Upload POC artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: poc-4.14
+          path: |
+            poc/ghostlock_trigger
+            poc/ghostlock_exploit
+            poc/root.sh
+            poc/target.h
+            poc/README_4.14.md
+
+  fullchain:
+    name: "Fullchain (NDK device + host controller)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Android NDK r29
+        id: cache-ndk
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/android-ndk-r29
+          key: ndk-r29-${{ runner.os }}
+
+      - name: Download Android NDK r29
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: |
+          cd "${{ runner.temp }}"
+          curl -sL -o ndk.zip https://dl.google.com/android/repository/android-ndk-r29-linux.zip
+          unzip -q ndk.zip
+          mv android-ndk-r29 ${{ runner.temp }}/android-ndk-r29
+
+      - name: Install host deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang make
+
+      - name: Build fullchain
+        run: |
+          make -C fullchain clean
+          make -C fullchain -j2 NDK_ROOT="${{ runner.temp }}/android-ndk-r29"
+          ls -la fullchain/build/
+
+      - name: Upload fullchain artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fullchain-build
+          path: fullchain/build/
