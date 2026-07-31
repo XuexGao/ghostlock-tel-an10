@@ -52,6 +52,45 @@ jobs:
             poc/target.h
             poc/README_4.14.md
 
+  port414:
+    name: "Port-4.14 (full chain, NDK)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Android NDK r29
+        id: cache-ndk
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/android-ndk-r29
+          key: ndk-r29-${{ runner.os }}
+
+      - name: Download Android NDK r29
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: |
+          cd "${{ runner.temp }}"
+          curl -sL -o ndk.zip https://dl.google.com/android/repository/android-ndk-r29-linux.zip
+          unzip -q ndk.zip
+          rm -f ndk.zip
+
+      - name: Install host deps
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang make
+
+      - name: Build port-4.14
+        run: |
+          make -C port-4.14 clean
+          make -C port-4.14 -j2 NDK_ROOT="${{ runner.temp }}/android-ndk-r29"
+          ls -la port-4.14/build/
+
+      - name: Upload port-4.14 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: port-4.14-build
+          path: port-4.14/build/
+
   fullchain:
     name: "Fullchain (NDK device + host controller)"
     runs-on: ubuntu-latest
