@@ -91,6 +91,42 @@ jobs:
           name: port-4.14-build
           path: port-4.14/build/
 
+  host-arm64:
+    name: "Host controller arm64 (OTG 宿主手机用)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache Android NDK r29
+        id: cache-ndk
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/android-ndk-r29
+          key: ndk-r29-${{ runner.os }}
+
+      - name: Download Android NDK r29
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: |
+          cd "${{ runner.temp }}"
+          curl -sL -o ndk.zip https://dl.google.com/android/repository/android-ndk-r29-linux.zip
+          unzip -q ndk.zip
+          rm -f ndk.zip
+
+      - name: Build arm64 host controller
+        run: |
+          "${{ runner.temp }}/android-ndk-r29/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android35-clang" \
+            -O2 -std=c11 -Wall -Wextra -Werror \
+            port-4.14/src/host/ionstack_reroot.c \
+            -o xpad2-ionstack-reroot-arm64-android
+          file xpad2-ionstack-reroot-arm64-android
+
+      - name: Upload arm64 host controller
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-arm64-android
+          path: xpad2-ionstack-reroot-arm64-android
+
   fullchain:
     name: "Fullchain (NDK device + host controller)"
     runs-on: ubuntu-latest
