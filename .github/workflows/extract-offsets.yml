@@ -29,7 +29,7 @@ jobs:
       - name: Install cross toolchain
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq gcc-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev
+          sudo apt-get install -y -qq gcc-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev clang
 
       - name: Clone TEL-AN10 kernel source
         run: |
@@ -39,20 +39,20 @@ jobs:
       - name: Configure kernel (merge_denver_defconfig)
         run: |
           cd "$KSRC"
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- merge_denver_defconfig
+          make CLANG_PREBUILTS_PATH=/usr/lib/llvm-14/ ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- merge_denver_defconfig
           ./scripts/config --file .config -d MODVERSIONS -e DEBUG_SPINLOCK
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+          make CLANG_PREBUILTS_PATH=/usr/lib/llvm-14/ ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
           grep -E "^CONFIG_(MODVERSIONS|DEBUG_SPINLOCK|SCHEDSTATS|MEMCG|FAIR_GROUP_SCHED|RT_GROUP_SCHED|SECCOMP|SECURITY_SELINUX)=" .config || true
 
       - name: make prepare
         run: |
           cd "$KSRC"
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" prepare
+          make CLANG_PREBUILTS_PATH=/usr/lib/llvm-14/ ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" prepare
 
       - name: Build offsets module
         run: |
           cd "$KSRC"
-          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" M="$GITHUB_WORKSPACE/tools/offext" modules
+          make CLANG_PREBUILTS_PATH=/usr/lib/llvm-14/ ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" M="$GITHUB_WORKSPACE/tools/offext" modules
 
       - name: Parse offsets (main table)
         if: always()
