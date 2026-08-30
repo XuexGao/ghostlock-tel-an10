@@ -1,0 +1,84 @@
+# ============================================================
+#  extract-offsets: 从 TEL-AN10 真机内核源码 (4.14.116) 提取
+#  task_struct/cred/rt_mutex/pipe/configfs 等结构体偏移
+#
+#  触发: workflow_dispatch
+#  原理: merge_denver_defconfig + make prepare + 编译内嵌
+#        offsetof 数组的模块, aarch64-nm -S 读符号 SIZE 列
+# ============================================================
+name: extract-offsets
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_repo:
+        description: 'TEL-AN10 内核源码仓库'
+        default: 'https://github.com/XuexGao/TEL-AN10_opensource'
+      kernel_dir:
+        description: '仓库内 kernel 子目录'
+        default: 'Code_Opensource/kernel'
+
+jobs:
+  offsets:
+    name: "Extract struct offsets (4.14.116)"
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cross toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gcc-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev
+
+      - name: Clone TEL-AN10 kernel source
+        run: |
+          git clone --depth 1 "${{ inputs.kernel_repo }}" /tmp/ksrc
+          echo "KSRC=/tmp/ksrc/${{ inputs.kernel_dir }}" >> $GITHUB_ENV
+
+      - name: Configure kernel (merge_denver_defconfig)
+        run: |
+          cd "$KSRC"
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- merge_denver_defconfig
+          ./scripts/config --file .config -d MODVERSIONS -e DEBUG_SPINLOCK
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+          grep -E "^CONFIG_(MODVERSIONS|DEBUG_SPINLOCK|SCHEDSTATS|MEMCG|FAIR_GROUP_SCHED|RT_GROUP_SCHED|SECCOMP|SECURITY_SELINUX)=" .config || true
+
+      - name: make prepare
+        run: |
+          cd "$KSRC"
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" prepare
+
+      - name: Build offsets module
+        run: |
+          cd "$KSRC"
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" M="$GITHUB_WORKSPACE/tools/offext" modules
+
+      - name: Parse offsets (main table)
+        if: always()
+        run: |
+          cd "$GITHUB_WORKSPACE/tools/offext"
+          {
+            echo "=== struct offsets (hex) — TEL-AN10 4.14.116 merge_denver_defconfig ==="
+            aarch64-linux-gnu-nm -S --defined-only offsets_mod.o 2>/dev/null | \
+              awk '$3 ~ /^ksz_/ {printf "%s 0x%s\n", $3, $2}' | sort
+          } | tee offsets_report.txt
+
+      - name: Parse offsets (configfs, tolerate failure)
+        if: always()
+        run: |
+          cd "$GITHUB_WORKSPACE/tools/offext"
+          if [ -f offsets_cfgfs.o ]; then
+            aarch64-linux-gnu-nm -S --defined-only offsets_cfgfs.o | \
+              awk '$3 ~ /^ksz_/ {printf "%s 0x%s\n", $3, $2}' | sort | tee -a offsets_report.txt
+          else
+            echo "configfs offsets module not built (compile failed — see build step)" | tee -a offsets_report.txt
+          fi
+
+      - name: Upload offsets report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tel-an10-offsets
+          path: tools/offext/offsets_report.txt
+          if-no-files-found: warn
