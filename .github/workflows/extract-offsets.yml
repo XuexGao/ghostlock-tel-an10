@@ -52,7 +52,7 @@ jobs:
       - name: Build offsets module
         run: |
           cd "$KSRC"
-          make CLANG_PREBUILTS_PATH=/usr/lib/llvm-14/ ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" M="$GITHUB_WORKSPACE/tools/offext" modules
+          make CLANG_PREBUILTS_PATH=/usr/lib/llvm-14/ ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j"$(nproc)" M="$GITHUB_WORKSPACE/tools/offext" modules || { echo "LTO link failed (non-fatal — .o files already built)"; ls -la "$GITHUB_WORKSPACE/tools/offext"/*.o; }
 
       - name: Parse offsets (main table)
         if: always()
@@ -61,7 +61,7 @@ jobs:
           {
             echo "=== struct offsets (hex) — TEL-AN10 4.14.116 EXACT phone config ==="
             aarch64-linux-gnu-nm -S --defined-only offsets_mod.o 2>/dev/null | \
-              awk '$3 ~ /^ksz_/ {printf "%s 0x%s\n", $3, $2}' | sort
+              awk 'NF>=4 && $4 ~ /^ksz_/ {printf "%s 0x%s\n", $4, $2}' | sort
           } | tee offsets_report.txt
 
       - name: Parse offsets (configfs, tolerate failure)
@@ -70,7 +70,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/tools/offext"
           if [ -f offsets_cfgfs.o ]; then
             aarch64-linux-gnu-nm -S --defined-only offsets_cfgfs.o | \
-              awk '$3 ~ /^ksz_/ {printf "%s 0x%s\n", $3, $2}' | sort | tee -a offsets_report.txt
+              awk 'NF>=4 && $4 ~ /^ksz_/ {printf "%s 0x%s\n", $4, $2}' | sort | tee -a offsets_report.txt
           else
             echo "configfs offsets module not built (compile failed — see build step)" | tee -a offsets_report.txt
           fi
