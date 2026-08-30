@@ -13,6 +13,7 @@
 #include <linux/seccomp.h>
 #include <linux/thread_info.h>
 #include <asm/thread_info.h>
+#include "rtmutex_common.h"
 
 #define OFF(sym, field, tag) \
   char ksz_##tag[__builtin_offsetof(sym, field)];
@@ -48,14 +49,27 @@ OFF(struct task_struct, seccomp, task_seccomp)
 OFF(struct task_struct, pi_waiters, task_pi_waiters)
 OFF(struct task_struct, pi_top_task, task_pi_top_task)
 OFF(struct task_struct, pi_blocked_on, task_pi_blocked_on)
+#ifdef CONFIG_HW_VIP_THREAD
+OFF(struct task_struct, static_vip, task_static_vip)
+OFF(struct task_struct, vip_entry, task_vip_entry)
+OFF(struct task_struct, enqueue_time, task_enqueue_time)
+#endif
+#ifdef CONFIG_HUAWEI_SCHED_VIP
+OFF(struct task_struct, vip_prio, task_vip_prio)
+OFF(struct task_struct, hisi_vip_entry, task_hisi_vip_entry)
+OFF(struct task_struct, hisi_vip_last_queued, task_hisi_vip_last_queued)
+#endif
+#ifdef CONFIG_HW_QOS_THREAD
+OFF(struct task_struct, proc_qos, task_proc_qos)
+OFF(struct task_struct, thread_qos, task_thread_qos)
+OFF(struct task_struct, trans_flags, task_trans_flags)
+#endif
 SIZE(struct task_struct, task)
 
 /* thread_info (arm64) */
 OFF(struct thread_info, flags, ti_flags)
 OFF(struct thread_info, addr_limit, ti_addr_limit)
-OFF(struct thread_info, task, ti_task)
 OFF(struct thread_info, preempt_count, ti_preempt_count)
-OFF(struct thread_info, cpu, ti_cpu)
 SIZE(struct thread_info, ti)
 
 /* cred */
