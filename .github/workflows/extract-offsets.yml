@@ -29,7 +29,7 @@ jobs:
       - name: Install cross toolchain
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq gcc-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev clang
+          sudo apt-get install -y -qq gcc-aarch64-linux-gnu bc bison flex libssl-dev libelf-dev clang llvm-14
 
       - name: Clone TEL-AN10 kernel source
         run: |
@@ -40,9 +40,9 @@ jobs:
         run: |
           cd "$KSRC"
           cp "$GITHUB_WORKSPACE/tools/offext/phone_config.txt" .config
-          ./scripts/config --file .config -d MODVERSIONS -d CFI -e LTO_NONE 2>/dev/null || true
+          ./scripts/config --file .config -d MODVERSIONS -d CFI -d LTO -d LTO_CLANG -d LTO_CLANG_THIN -e LTO_NONE
           make CLANG_PREBUILTS_PATH=/usr/lib/llvm-14/ ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
-          grep -E "^CONFIG_(MODVERSIONS|DEBUG_SPINLOCK|SCHEDSTATS|MEMCG|FAIR_GROUP_SCHED|RT_GROUP_SCHED|SECCOMP|SECURITY_SELINUX|HW_QOS_THREAD|HUAWEI_SCHED_VIP|HW_VIP_THREAD)=" .config || true
+          grep -E "^CONFIG_(MODVERSIONS|DEBUG_SPINLOCK|LTO|LTO_NONE|LTO_CLANG|SCHEDSTATS|MEMCG|FAIR_GROUP_SCHED|RT_GROUP_SCHED|SECCOMP|SECURITY_SELINUX|HW_QOS_THREAD|HUAWEI_SCHED_VIP|HW_VIP_THREAD)=" .config || true
 
       - name: make prepare
         run: |
@@ -60,7 +60,7 @@ jobs:
           cd "$GITHUB_WORKSPACE/tools/offext"
           {
             echo "=== struct offsets (hex) — TEL-AN10 4.14.116 EXACT phone config ==="
-            aarch64-linux-gnu-nm -S --defined-only offsets_mod.o 2>/dev/null | \
+            ( aarch64-linux-gnu-nm -S --defined-only offsets_mod.o 2>/dev/null || llvm-nm-14 -S --defined-only offsets_mod.o 2>/dev/null ) | \
               awk 'NF>=4 && $4 ~ /^ksz_/ {printf "%s 0x%s\n", $4, $2}' | sort
           } | tee offsets_report.txt
 
@@ -69,7 +69,7 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE/tools/offext"
           if [ -f offsets_cfgfs.o ]; then
-            aarch64-linux-gnu-nm -S --defined-only offsets_cfgfs.o | \
+            ( aarch64-linux-gnu-nm -S --defined-only offsets_cfgfs.o 2>/dev/null || llvm-nm-14 -S --defined-only offsets_cfgfs.o 2>/dev/null ) | \
               awk 'NF>=4 && $4 ~ /^ksz_/ {printf "%s 0x%s\n", $4, $2}' | sort | tee -a offsets_report.txt
           else
             echo "configfs offsets module not built (compile failed — see build step)" | tee -a offsets_report.txt
