@@ -36,13 +36,13 @@ jobs:
           git clone --depth 1 "${{ inputs.kernel_repo }}" /tmp/ksrc
           echo "KSRC=/tmp/ksrc/${{ inputs.kernel_dir }}" >> $GITHUB_ENV
 
-      - name: Configure kernel (merge_denver_defconfig)
+      - name: Configure kernel (EXACT phone config from /proc/config.gz)
         run: |
           cd "$KSRC"
-          make CLANG_PREBUILTS_PATH=/usr/lib/llvm-14/ ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- merge_denver_defconfig
-          ./scripts/config --file .config -d MODVERSIONS -e DEBUG_SPINLOCK
+          cp "$GITHUB_WORKSPACE/tools/offext/phone_config.txt" .config
+          ./scripts/config --file .config -d MODVERSIONS
           make CLANG_PREBUILTS_PATH=/usr/lib/llvm-14/ ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
-          grep -E "^CONFIG_(MODVERSIONS|DEBUG_SPINLOCK|SCHEDSTATS|MEMCG|FAIR_GROUP_SCHED|RT_GROUP_SCHED|SECCOMP|SECURITY_SELINUX)=" .config || true
+          grep -E "^CONFIG_(MODVERSIONS|DEBUG_SPINLOCK|SCHEDSTATS|MEMCG|FAIR_GROUP_SCHED|RT_GROUP_SCHED|SECCOMP|SECURITY_SELINUX|HW_QOS_THREAD|HUAWEI_SCHED_VIP|HW_VIP_THREAD)=" .config || true
 
       - name: make prepare
         run: |
@@ -59,7 +59,7 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE/tools/offext"
           {
-            echo "=== struct offsets (hex) — TEL-AN10 4.14.116 merge_denver_defconfig ==="
+            echo "=== struct offsets (hex) — TEL-AN10 4.14.116 EXACT phone config ==="
             aarch64-linux-gnu-nm -S --defined-only offsets_mod.o 2>/dev/null | \
               awk '$3 ~ /^ksz_/ {printf "%s 0x%s\n", $3, $2}' | sort
           } | tee offsets_report.txt
