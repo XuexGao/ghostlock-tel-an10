@@ -40,7 +40,7 @@ jobs:
         run: |
           cd "$KSRC"
           cp "$GITHUB_WORKSPACE/tools/offext/phone_config.txt" .config
-          ./scripts/config --file .config -d MODVERSIONS
+          ./scripts/config --file .config -d MODVERSIONS -d CFI -e LTO_NONE 2>/dev/null || true
           make CLANG_PREBUILTS_PATH=/usr/lib/llvm-14/ ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
           grep -E "^CONFIG_(MODVERSIONS|DEBUG_SPINLOCK|SCHEDSTATS|MEMCG|FAIR_GROUP_SCHED|RT_GROUP_SCHED|SECCOMP|SECURITY_SELINUX|HW_QOS_THREAD|HUAWEI_SCHED_VIP|HW_VIP_THREAD)=" .config || true
 
