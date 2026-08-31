@@ -75,6 +75,17 @@ jobs:
             echo "configfs offsets module not built (compile failed — see build step)" | tee -a offsets_report.txt
           fi
 
+      - name: Parse offsets (selinux, tolerate failure)
+        if: always()
+        run: |
+          cd "$GITHUB_WORKSPACE/tools/offext"
+          if [ -f offsets_selinux.o ]; then
+            ( aarch64-linux-gnu-nm -S --defined-only offsets_selinux.o 2>/dev/null || llvm-nm-14 -S --defined-only offsets_selinux.o 2>/dev/null ) | \
+              awk 'NF>=4 && $4 ~ /^ksz_/ {printf "%s 0x%s\n", $4, $2}' | sort | tee -a offsets_report.txt
+          else
+            echo "selinux offsets module not built (non-fatal)" | tee -a offsets_report.txt
+          fi
+
       - name: Upload offsets report
         if: always()
         uses: actions/upload-artifact@v4

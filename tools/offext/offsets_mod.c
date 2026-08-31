@@ -46,6 +46,11 @@ OFF(struct task_struct, real_cred, task_real_cred)
 OFF(struct task_struct, cred, task_cred)
 OFF(struct task_struct, comm, task_comm)
 OFF(struct task_struct, seccomp, task_seccomp)
+OFF(struct task_struct, atomic_flags, task_atomic_flags)
+OFF(struct task_struct, files, task_files)
+OFF(struct task_struct, nsproxy, task_nsproxy)
+OFF(struct task_struct, signal, task_signal)
+OFF(struct task_struct, fs, task_fs)
 OFF(struct task_struct, pi_lock, task_pi_lock)
 OFF(struct task_struct, pi_waiters, task_pi_waiters)
 OFF(struct task_struct, pi_top_task, task_pi_top_task)
@@ -129,6 +134,7 @@ OFF(struct mm_struct, mm_count, mm_mm_count)
 OFF(struct mm_struct, saved_auxv, mm_saved_auxv)
 OFF(struct mm_struct, exe_file, mm_exe_file)
 OFF(struct mm_struct, start_stack, mm_start_stack)
+OFF(struct mm_struct, owner, mm_owner)
 SIZE(struct mm_struct, mm)
 
 /* pipe */
@@ -169,6 +175,10 @@ OFF(struct seccomp, filter, seccomp_filter)
 
 /* page */
 OFF(struct page, flags, page_flags)
+OFF(struct file, f_op, file_f_op)
+OFF(struct file, f_inode, file_f_inode)
+OFF(struct file, private_data, file_private_data)
+OFF(struct file, f_flags, file_f_flags)
 SIZE(struct page, page)
 
 /* list_head 基础 */
