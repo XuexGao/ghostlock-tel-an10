@@ -152,3 +152,33 @@ B) 继续 panic 扫描 (每个候选 1 次重启, 约 5-13 次)
 
 结论: 该写路径需要**真机那颗内核 (212 / 2021-11-12) 的二进制**来定帧布局;
 210(Oct18)/270(Aug2022) 包经 banner 偏移校验均与真机布局不同, 不能替代。
+
+## 第六轮 (2026-09-05) — LSPromise / DirtyFrag 评估: 不可用
+LSPromise = CVE-2026-49881 (Android 17 Telecom serviceClassExists 逻辑漏洞
+→ system_server 执行 Java) + CVE-2026-43284 DirtyFrag (xfrm-ESP 就地解密
+覆写页缓存 → 改只读文件 → 打补丁 libc 拿 root)。
+
+源码核对 (零风险, 不碰手机):
+- net/ipv4/esp4.c 4.14.116 esp_input(): skb 未克隆且非线性无 frag_list 时
+  `goto skip_cow` -> 跳过 skb_cow_data -> AEAD 就地写回 frag 页
+  ⇒ 漏洞形态在 4.14 存在 (2026 的修复不可能在里面) ✓
+- 真机 config: XFRM_USER=y, INET_ESP=y, INET_AH=y, NET_KEY=y ✓
+- net/ipv4/udp.c 4.14 有 UDP_ENCAP_ESPINUDP ✓
+设备实测 (shell, uid 2000):
+- socket(NETLINK_XFRM) = EACCES ✗✗✗  ← 决定性阻塞
+- socket(AF_KEY, SOCK_RAW, PF_KEY_V2) = EACCES ✗
+- socket(NETLINK_ROUTE)=EACCES, socket(NETLINK_AUDIT)=EACCES
+- setsockopt(UDP_ENCAP)=OK; splice/vmsplice=OK (无 seccomp); xfrm_stat 可读
+⇒ SELinux 把 shell 的这些 socket class 全禁; 绕法需先进 system_server /
+network_stack, 而那入口是 Android 17 专属 ⇒ 本路径对本机不可用。
+
+## 但有一次被忽略的正面信号
+pselect 大窗口喷射那轮 bootreason 从 `kernel_panic,bug` 变成
+`kernel_panic,fatal_exception` —— **失败子类型改变**, 说明 6KB 窗口确实改变了
+walk 的行为 (很可能命中了, 然后在 [10]-[12] 更深处崩)。
+而那一版实现有两个已知缺陷:
+  (1) dup2 从 fd 3 开始铺图案 -> 踩掉 T1 的 socketpair fd
+      (trace 实证: write-send-ret errno=104 ECONNRESET -> ctl_buf 被释放)
+  (2) owner=fake_task|1 直接进 [10]-[12], 崩在哪一步不可见
+下一步 (若继续): 修 (1) 用高 fd 基址; 先只用 SAFE_LOCK 版本验证命中
+(命中则可安全返回, diag 能看到 fake_w0 tree_entry 被写成栈地址 = 铁证)。
