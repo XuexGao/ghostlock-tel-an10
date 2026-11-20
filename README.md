@@ -45,6 +45,23 @@ CONFIRM=yes ./root.sh root      # 提权
 
 详细偏移表与注意事项见 `poc/README_4.14.md`。
 
+## 移植进展 (4.14 完整链)
+
+`port-4.14/` 是 4.19 完整链到 TEL-AN10 (4.14.116) 的移植。
+
+- 当前状态与历史结论见 `port-4.14/PORT_4.14.md` 及
+  `port-4.14/PROGRESS_*.md`、`DEBUG_STATE_2026-08-30.md`。
+- **perf 页回收路线在本机不可用**（`CONFIG_SECURITY_PERF_EVENTS_RESTRICT=y`），
+  已改用 rt_sigreturn 信号帧方案（lane 11），见
+  `port-4.14/PROGRESS_2026-11-20.md` 与 `port-4.14/tools/lane11_layout.md`。
+
+lane 11 帧布局由 vendor 4.14.116 源码实测推导（非猜测），可复核：
+
+```sh
+cd port-4.14/tools
+gcc -O2 -o lane11_layout lane11_layout.c && ./lane11_layout
+```
+
 ## 许可
 
 - poc: 仓库内各文件原有许可
