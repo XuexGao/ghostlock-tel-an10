@@ -14,7 +14,7 @@ $ADB shell chmod 755 /data/local/tmp/ionstack_perf_target
 
 echo "[*] 跑 lane11-check (不会 panic)..."
 $ADB shell "LD_PRELOAD=/data/local/tmp/ionstack_preload.so \
-  IONSTACK_STAGE=lane11-check /data/local/tmp/ionstack_perf_target" || true
+  IONSTACK_STAGE=${STAGE:-lane11-check} /data/local/tmp/ionstack_perf_target" || true
 
 echo
 echo "[*] 期望: 'lane11 altstack calibrated size=0x10230 pgoff=0x220' 且 ok=1"

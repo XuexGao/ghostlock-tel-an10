@@ -34,6 +34,7 @@ EXPLOIT_SRCS := \
   src/exploit/root.c \
   src/exploit/preload.c \
   src/exploit/lane11.c \
+  src/exploit/lane11_run.c \
   src/exploit/su_blob.S
 
 COMMON_WARN := -Wall -Wextra -Werror
